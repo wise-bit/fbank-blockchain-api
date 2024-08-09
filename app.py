@@ -3,9 +3,10 @@ import sys
 import time
 import json
 import hashlib
-from flask import Flask, request, jsonify
 import threading
 import signal
+from flask import Flask, request, jsonify
+from flask_cors import CORS
 
 shutdown_event = threading.Event()  # global thread variable
 
@@ -117,6 +118,8 @@ class Blockchain:
 # Flask setup
 
 app = Flask(__name__)
+CORS(app)
+
 blockchain = Blockchain()
 
 
@@ -131,9 +134,7 @@ def mine_block():
     last_proof = last_block.proof
     proof = blockchain.proof_of_work(last_proof)
 
-    blockchain.new_transaction(
-        sender="fbank_blockchain", recipient="name", amount=1
-    )
+    blockchain.new_transaction(sender="fbank_blockchain", recipient="name", amount=1)
 
     previous_hash = blockchain.hash(last_block)
     block = blockchain.new_block(proof, previous_hash)
