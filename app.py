@@ -120,7 +120,7 @@ app = Flask(__name__)
 blockchain = Blockchain()
 
 
-@app.route("/mine", methods=["GET"])
+@app.route("/mine", methods=["POST"])
 def mine_block():
     values = request.get_json()
     required = ["name"]
@@ -132,7 +132,7 @@ def mine_block():
     proof = blockchain.proof_of_work(last_proof)
 
     blockchain.new_transaction(
-        sender="fbank_blockchain", recipient="your_address", amount=1
+        sender="fbank_blockchain", recipient="name", amount=1
     )
 
     previous_hash = blockchain.hash(last_block)
