@@ -145,7 +145,7 @@ def mine_block():
         "proof": block.proof,
         "previous_hash": block.previous_hash,
     }
-    return jsonify(response), 200
+    return jsonify(response), 201
 
 
 @app.route("/transactions/new", methods=["POST"])
