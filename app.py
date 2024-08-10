@@ -7,6 +7,7 @@ import threading
 import signal
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+from flask_talisman import Talisman
 
 shutdown_event = threading.Event()  # global thread variable
 
@@ -134,6 +135,7 @@ class Blockchain:
 # Flask setup
 
 app = Flask(__name__)
+Talisman(app, content_security_policy=None)
 CORS(app)
 
 blockchain = Blockchain()
@@ -225,4 +227,8 @@ thread = threading.Thread(target=save_periodically, daemon=True)
 thread.start()
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5001)
+    app.run(
+        host="0.0.0.0",
+        port=5001,
+        ssl_context=('fullchain.pem', 'privkey.pem')
+    )
