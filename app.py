@@ -7,6 +7,7 @@ import threading
 import signal
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+from flask_talisman import Talisman
 
 shutdown_event = threading.Event()  # global thread variable
 
@@ -69,7 +70,6 @@ class Blockchain:
 
     @property
     def last_block(self):
-        print(self.chain)
         return self.chain[-1]
 
     @staticmethod
@@ -89,12 +89,17 @@ class Blockchain:
         guess_hash = hashlib.sha256(guess).hexdigest()
         return guess_hash[:4] == "0000"
 
-    def save_to_file(self, filename="blockchain.json"):
+    def save_to_file(self, filename="data/blockchain.json"):
         with open(filename, "w") as f:
             chain_data = [block.to_dict() for block in self.chain]
             json.dump(chain_data, f, indent=4)
 
-    def load_from_file(self, filename="blockchain.json"):
+    def dump_all_to_file(self, filename="data/transaction_dump.json"):
+        with open(filename, "w") as f:
+            dump_data = self.get_full_transaction_logs()
+            json.dump(dump_data, f, indent=4)
+
+    def load_from_file(self, filename="data/blockchain.json"):
         if os.path.exists(filename):
             with open(filename, "r") as f:
                 chain_data = json.load(f)
@@ -110,14 +115,27 @@ class Blockchain:
                     )
                     self.chain.append(block)
 
-    def get_all_transactions(self):
-        transactions = [tx for block in self.chain for tx in block.transactions]
+    def get_confirmed_transactions(self):
+        transactions = [
+            tx.to_dict() for block in self.chain for tx in block.transactions
+        ]
         return transactions
+
+    def get_pending_transactions(self):
+        transactions = [tx.to_dict() for tx in self.current_transactions]
+        return transactions
+
+    def get_full_transaction_logs(self):
+        return {
+            "pending": self.get_pending_transactions(),
+            "confirmed": self.get_confirmed_transactions(),
+        }
 
 
 # Flask setup
 
 app = Flask(__name__)
+Talisman(app, content_security_policy=None)
 CORS(app)
 
 blockchain = Blockchain()
@@ -134,7 +152,9 @@ def mine_block():
     last_proof = last_block.proof
     proof = blockchain.proof_of_work(last_proof)
 
-    blockchain.new_transaction(sender="fbank_blockchain", recipient="name", amount=1)
+    blockchain.new_transaction(
+        sender="fbank_blockchain", recipient=values["name"], amount=1
+    )
 
     previous_hash = blockchain.hash(last_block)
     block = blockchain.new_block(proof, previous_hash)
@@ -166,12 +186,7 @@ def new_transaction():
 
 @app.route("/transactions", methods=["GET"])
 def get_transactions():
-    pending_transactions = [tx.to_dict() for tx in blockchain.current_transactions]
-    confirmed_transactions = [tx.to_dict() for tx in blockchain.get_all_transactions()]
-    response = {
-        "pending_transactions": pending_transactions,
-        "confirmed_transactions": confirmed_transactions,
-    }
+    response = blockchain.get_full_transaction_logs()
     return jsonify(response), 200
 
 
@@ -184,25 +199,26 @@ def full_chain():
     return jsonify(response), 200
 
 
-# Background saving function
-def save_periodically(interval=3600):
+def save_periodically(interval=1800):
     while not shutdown_event.is_set():
         time.sleep(interval)
         if shutdown_event.is_set():
             break
         blockchain.save_to_file()
+        blockchain.dump_all_to_file()
 
 
-# Signal handler to handle graceful shutdown
-def signal_handler(_sig, _frame):
+def signal_handler(sig, frame):
     print("Signal received, shutting down gracefully...")
+    blockchain.save_to_file()
+    blockchain.dump_all_to_file()
     shutdown_event.set()
-    thread.join(timeout=10)
+    thread.join(timeout=2)
     print("Shutdown complete.")
     sys.exit(0)
 
 
-# Register the signal handler
+# Register signal handler
 signal.signal(signal.SIGINT, signal_handler)
 signal.signal(signal.SIGTERM, signal_handler)
 
@@ -211,4 +227,8 @@ thread = threading.Thread(target=save_periodically, daemon=True)
 thread.start()
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5001)
+    app.run(
+        host="0.0.0.0",
+        port=5001,
+        ssl_context=('fullchain.pem', 'privkey.pem')
+    )
