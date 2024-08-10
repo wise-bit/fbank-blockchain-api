@@ -88,17 +88,17 @@ class Blockchain:
         guess_hash = hashlib.sha256(guess).hexdigest()
         return guess_hash[:4] == "0000"
 
-    def save_to_file(self, filename="blockchain.json"):
+    def save_to_file(self, filename="data/blockchain.json"):
         with open(filename, "w") as f:
             chain_data = [block.to_dict() for block in self.chain]
             json.dump(chain_data, f, indent=4)
 
-    def dump_all_to_file(self, filename="transaction_dump.json"):
+    def dump_all_to_file(self, filename="data/transaction_dump.json"):
         with open(filename, "w") as f:
             dump_data = self.get_full_transaction_logs()
             json.dump(dump_data, f, indent=4)
 
-    def load_from_file(self, filename="blockchain.json"):
+    def load_from_file(self, filename="data/blockchain.json"):
         if os.path.exists(filename):
             with open(filename, "r") as f:
                 chain_data = json.load(f)
