@@ -65,7 +65,7 @@ class Blockchain:
     def new_transaction(self, sender, recipient, amount):
         transaction = Transaction(sender, recipient, amount)
         self.current_transactions.append(transaction)
-        self.save_to_file()
+        self.dump_all_to_file()
         return self.last_block.index + 1
 
     @property
